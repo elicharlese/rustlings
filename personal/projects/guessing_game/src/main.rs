@@ -9,12 +9,20 @@ fn main() { // `fn` declares a new function, `main` is the main function
     let mut guess = String::new(); // variable to store the guess
     // variables are immutable by default, meaning once we give the variable a value, the value won't change
     // To make a variable mutable, we add mut before the variable name
-    // :: syntx in the ::new indicates that new is an assocaited function of the String type
+    // :: syntax in the ::new indicates that new is an associated function of the String type
     // An associated function is a function that’s implemented on a type
     // new function create a new empty string
-    io::stdin()
+    io::stdin() // we could use std::io::stdin() to read from the standard input
+    // std::io:Stdin is a type that implements the Read trait
         .read_line(&mut guess)
         .expect("Failed to read line");
     println!("You guessed: {guess}");
     // println!("You guessed: {}", guess);
 }
+
+// An associated function is a function that’s implemented on a type, in this case String.
+// This new function creates a new, empty string.
+// You’ll find a new function on many types, because it’s a common name for a function that makes a new value of some kind.
+
+
+
