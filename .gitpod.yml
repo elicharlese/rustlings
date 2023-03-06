@@ -5,3 +5,4 @@ tasks:
 vscode:
   extensions:
     - rust-lang.rust@0.7.8:CvNqMTgDdt3UXt+6BCDTVg==
+    - TabNine.tabnine-vscode

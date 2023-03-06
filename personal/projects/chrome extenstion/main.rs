@@ -11,18 +11,23 @@
 // Finally, you'll need to write the code for your extension. You can find examples and tutorials for doing this within the Servo documentation.
 
 extern crate servo;
+use std::time::Duration;
 
 fn main() {
     let origin = "chrome-extension://your-extension-id-here";
-    let mut instance = servo.ServoInstance::new();
-    let mut window = servo.Window::new(origin);
-
+    let main_page_url = format!("{}/main-page.html", origin);
+    let mut instance = servo::ServoInstance::new();
+    let mut window = servo::Window::new(origin);
     instance.add_window(window);
-    instance.load_uri("chrome-extension://your-extension-id-here/main-page.html");
-
+    instance.load_uri(&main_page_url);
     loop {
-        instance.handle_events();
-    }
+        if let Some(event) = instance.wait_for_event(Duration::from_millis(10)) {
+            instance.handle_events();
+        } else {
+            break;
+        }
+}
+
 }
 
 use wasm_bindgen::prelude::*;
