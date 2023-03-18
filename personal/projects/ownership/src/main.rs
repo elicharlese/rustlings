@@ -186,34 +186,174 @@
 // Ownership, boxes, and moves provide a foundation for safely programming with the heap.
 // However, move-only APIs can be inconvenient to use.
 
+// fn main() {
+//     let m1 = String::from("Hello");
+//     let m2 = String::from("world");
+//     greet(m1, m2); // L2
+//     let s = format!("{} {}", m1, m2); // L3 // Error: m1 and m2 are moved
+// }
 
+// fn greet(g1: String, g2: String) {
+//     println!("{} {}!", g1, g2); // L1
+// }
 
+// calling greet moves the data from m1 and m2 into the parameters of greet.
+// Both strings are dropped at the end of greet, and therefore cannot be used within main.
 
+// An alternative greet could return ownership of the strings, like this:
 
+// fn main() {
+//     let m1 = String::from("Hello");
+//     let m2 = String::from("world"); // L1
+//     let (m1_again, m2_again) = greet(m1, m2);
+//     let s = format!("{} {}", m1_again, m2_again); // L2
+// }
 
+// fn greet(g1: String, g2: String) -> (String, String) {
+//     println!("{} {}!", g1, g2);
+//     (g1, g2)
+// }
 
+// However, this style of program is quite verbose.
+// Rust provides a concise style of reading and writing without moves through references.
 
+// References Are Non-Owning Pointers
+// A reference is a kind of pointer.
 
+fn main() {
+    let m1 = String::from("Hello");
+    let m2 = String::from("world"); // L1
+    greet(&m1, &m2); // L3 // note the ampersands
+    let s = format!("{} {}", m1, m2);
+}
 
+fn greet(g1: &String, g2: &String) { // note the ampersands
+    println!("{} {}!", g1, g2); // L2
+}
 
+// The expression &m1 uses the ampersand operator to create a reference to (or "borrow") m1.
+// The type of the greet parameter g1 is changed to &String, meaning "a reference to a String".
+// References are non-owning pointers, because they do not own the data they point to.
 
+// Dereferencing a Pointer Accesses Its Data
+// The underlying mechanism is the dereference operator, written with an asterisk (*).
 
+// fn main() {
+//     let mut x: Box<i32> = Box::new(1);
+//     let a: i32 = *x;         // *x reads the heap value, so a = 1
+//     *x += 1;                 // *x on the left-side modifies the heap value,
+//                             //     so x points to the value 2
 
+//     let r1: &Box<i32> = &x;  // r1 points to x on the stack
+//     let b: i32 = **r1;       // two dereferences get us to the heap value
 
+//     let r2: &i32 = &*x;      // r2 points to the heap value directly
+//     let c: i32 = *r2;    // so only one dereference is needed to read it
+// }
 
+// Observe the difference between r1 pointing to x on the stack, and r2 pointing to the heap value 2.
+// You probably won't see the dereference operator very often when you read Rust code.
+// Rust implicitly inserts dereferences and references in certain cases, such as calling a method with the dot operator.
 
+// fn main() {
+//     let x: Box<i32> = Box::new(-1);
+//     let x_abs1 = i32::abs(*x); // explicit dereference
+//     let x_abs2 = x.abs();      // implicit dereference
+//     assert_eq!(x_abs1, x_abs2);
 
+//     let r: &Box<i32> = &x;
+//     let r_abs1 = i32::abs(**r); // explicit dereference (twice)
+//     let r_abs2 = r.abs();       // implicit dereference (twice)
+//     assert_eq!(r_abs1, r_abs2);
 
+//     let s = String::from("Hello");
+//     let s_len1 = str::len(&s); // explicit reference
+//     let s_len2 = s.len();      // implicit reference
+//     assert_eq!(s_len1, s_len2);
 
+// }
 
+// For now, the important takeaway is that these conversions are happening with method calls and some macros like println.
 
+// Consider the following program, showing the state of memory after the last line:
 
+// fn main() {
+//     let x = Box::new(0);
+//     let y = Box::new(&x);
+// }
 
+// If you wanted to copy out the number 0 through y, how many dereferences would you need to use? Write your answer as a digit.
+// For example, if the correct expression is *y, then the answer is 1.
 
+// ***y is the correct expression. y has the type Box<&Box<i32>>.
+// It is a heap pointer to a stack reference to a heap pointer.
+// Therefore y must be dereferenced three times for each layer of indirection.
 
+// Rust Avoids Simultaneous Aliasing and Mutation
+// Pointers are a powerful and dangerous feature because they enable aliasing.
+// Aliasing is accessing the same data through different variables.
+// On its own, aliasing is harmless. But combined with mutation, we have a recipe for disaster.
+// One variable can "pull the rug out" from another variable in many ways
 
+// - By deallocating the aliased data, leaving the other variable to point to deallocated memory.
+// - By mutating the aliased data, invalidating runtime properties expected by the other variable.
+// - By concurrently mutating the aliased data, causing a data race with nondeterministic behavior for the other variable.
 
+// As a running example, we are going to look at programs using the vector data structure, Vec.
+// Unlike arrays which have a fixed length, vectors have a variable length by storing their elements in the heap.
 
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     vec.push(4);
+// }
+
+// The macro vec! creates a vector with the elements between the brackets.
+// The vector vec has type Vec<i32>. The syntax <i32> means the elements of the vector have type i32.
+
+// One important implementation detail is that vec allocates a heap array of a certain capacity.
+// We can peek into Vec's internals and see this detail for ourselves:
+
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+// }
+
+// Note: click the binocular icon in the top right of the diagram to toggle this detailed view in any runtime diagram.
+
+// Note: click the binocular icon in the top right of the diagram to toggle this detailed view in any runtime diagram.
+//  The vector is at capacity. So when we do a push, the vector has to create a new allocation with larger capacity, copy all the elements over, and deallocate the original heap array.
+// So when we do a push, the vector has to create a new allocation with larger capacity, copy all the elements over, and deallocate the original heap array.
+// In the diagram above, the array 1 2 3 4 is in a (potentially) different memory location than the original array 1 2 3.
+
+// To tie this back to memory safety, let's bring references into the mix.
+// Say we created a reference to a vector's heap data. Then that reference can be invalidated by a push, as simulated below:
+
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     let num: &i32 = &vec[2];
+//     vec.push(4);
+//     println!("Third element is {}", *num);
+// }
+
+// The resize will deallocate the previous array and allocate a new, bigger array.
+// In the process, num is left pointing to invalid memory.
+// Therefore at L3, dereferencing *num reads invalid memory, causing undefined behavior.
+
+// In more abstract terms, the issue is that the vector vec is both aliased (by the reference num) and mutated (by the operation vec.push(4)).
+// So to avoid these kinds of issues, Rust follows a basic principle:
+
+// Pointer Safety Principle: data should never be aliased and mutated at the same time.
+// Data can be aliased. Data can be mutated. But data cannot be both aliased and mutated.
+// Assigning a box from one variable to another will move ownership, invalidating the previous variable.
+// Owned data can only be accessed through the owner — no aliases.
+
+// By design, references are meant to temporarily create aliases.
+// In the rest of this section, we will explain the basics of how Rust ensures the safety of references through the borrow checker.
+
+// References Change Permissions on Paths
+// The core idea behind the borrow checker is that variables have three kinds of permissions on their data:
+// - Read (R): data can be copied to another location.
+// - Write (W): data can be mutated in-place.
+// - Own (O): data can be moved or dropped.
 
 
 
