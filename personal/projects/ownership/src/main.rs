@@ -220,16 +220,16 @@
 // References Are Non-Owning Pointers
 // A reference is a kind of pointer.
 
-fn main() {
-    let m1 = String::from("Hello");
-    let m2 = String::from("world"); // L1
-    greet(&m1, &m2); // L3 // note the ampersands
-    let s = format!("{} {}", m1, m2);
-}
+// fn main() {
+//     let m1 = String::from("Hello");
+//     let m2 = String::from("world"); // L1
+//     greet(&m1, &m2); // L3 // note the ampersands
+//     let s = format!("{} {}", m1, m2);
+// }
 
-fn greet(g1: &String, g2: &String) { // note the ampersands
-    println!("{} {}!", g1, g2); // L2
-}
+// fn greet(g1: &String, g2: &String) { // note the ampersands
+//     println!("{} {}!", g1, g2); // L2
+// }
 
 // The expression &m1 uses the ampersand operator to create a reference to (or "borrow") m1.
 // The type of the greet parameter g1 is changed to &String, meaning "a reference to a String".
@@ -355,24 +355,170 @@ fn greet(g1: &String, g2: &String) { // note the ampersands
 // - Write (W): data can be mutated in-place.
 // - Own (O): data can be moved or dropped.
 
+// These permissions don't exist at runtime, only within the compiler.
+// They describe how the compiler "thinks" about your program before the program is executed.
 
+// By default, a variable has read/own permissions (RO) on its data.
+// If a variable is annotated with let mut, then it also has the write permission (W).
+// The key idea is that references can temporarily remove these permissions.
 
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     let num: &i32 = &vec[2];
+//     println!("Third element is {}", *num);
+//     vec.push(4);
+// }
 
+// fn main() {
+//     let x = 0;
+//     let mut x_ref = &x;
+//     println!("{x_ref} {x}");
+// }
 
+// More generally, permissions are defined on paths and not just variables.
+// A path is anything you can put on the left-hand side of an assignment.
 
+// Paths include:
+// Variables, like a.
+// Dereferences of paths, like *a.
+// Array accesses of paths, like a[0].
+// Fields of paths, like a.0 for tuples or a.field for structs
+// Any combination of the above, like *((*a)[0].1).
 
+// Second, why do paths lose permissions when they become unused?
+// Because some permissions are mutually exclusive.
 
+// The Borrow Checker Finds Permission Violations
+// The goal of these permissions is to ensure that data cannot be mutated if it is aliased.
+// Creating a reference to data ("borrowing" it) causes that data to be temporarily read-only until the reference is no longer used.
+// Rust uses these permissions in its borrow checker.
+// The borrow checker looks for potentially unsafe operations involving references.
 
+// Any time a path is used, Rust expects that path to have certain permissions depending on the operation.
+// If you try to compile this program, then the Rust compiler will return the following error:
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     let num: &i32 = &vec[2];
+//     vec.push(4);
+//     println!("Third element is {}", *num);
+// }
 
+// Any time a path is used, Rust expects that path to have certain permissions depending on the operation.
+// The error message explains that vec cannot be mutated while the reference num is in use.
+// That's the surface-level reason — the underlying issue is that num could be invalidated by push.
 
+// Mutable References Provide Unique and Non-Owning Access to Data
+// The references we have seen so far are read-only immutable references (also called shared references).
+// Immutable references permit aliasing but disallow mutation.
+// However, it is also useful to temporarily provide mutable access to data without moving it.
 
+// The mechanism for this is mutable references (also called unique references).
 
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     let num: &mut i32 = &mut vec[2];
+//     *num += 1;
+//     println!("Third element is {}", *num);
+//     println!("Vector is now {:?}", vec);
+// }
 
+// The first observation is what makes mutable references safe.
+// Mutable references allow mutation but prevent aliasing.
+// The borrowed path vec becomes temporarily unusable, so effectively not an alias.
 
+// The second observation is what makes mutable references useful.
+// Mutable references can also be temporarily "downgraded" to read-only references.
 
+// fn main() {
+//     let mut vec: Vec<i32> = vec![1, 2, 3];
+//     let num: &mut i32 = &mut vec[2];
+//     let num2: &i32 = &*num;
+//     println!("{} {}", *num, *num2);
+// }
 
+// In this program, the borrow &*num removes the W permission from *num but not the R permission, so println!(..) can read both *num and *num2.
 
+// Permissions Are Returned At The End of a Reference's Lifetime
+// We said above that a reference changes permissions while it is "in use".
+// The phrase "in use" is describing a reference's lifetime, or the range of code spanning from its birth (where the reference is created) to its death (the last time(s) the reference is used).
 
+// fn main() {
+//     let mut x = 1;
+//     let y = &x;
+//     let z = *y;
+//     x += z;
+// }
 
+// In the previous examples, a lifetime has been a contiguous region of code.
+// However, once we introduce control flow, this is not necessarily the case.
 
+// fn ascii_capitalize(v: &mut Vec<char>) {
+//     let c = &v[0];
+//     if c.is_ascii_lowercase() {
+//         let up = c.to_ascii_uppercase();
+//         v[0] = up;
+//     } else {
+//         println!("Already capitalized: {:?}", v);
+//     }
+// }
 
+// The variable c has a different lifetime in each branch of the if-statement.
+// In the then-block, c is used in the expression c.to_ascii_uppercase().
+// In the then-block, c is used in the expression c.to_ascii_uppercase().
+// However, in the else-block, c is not used. *v immediately regains the W permission on entry to the else-block.
+
+// Data Must Outlive All Of Its References
+// The last safety property is that data must outlive any references to it.
+
+// fn return_a_string() -> &String {
+//     let s = String::from("Hello world");
+//     let s_ref = &s;
+//     s_ref
+// }
+
+// Rust will refuse to compile this program. It will give you a somewhat mysterious error message:
+
+// For now, you can see the underlying safety issue from this simulation:
+
+// fn return_a_string() -> &String {
+//     let s = String::from("Hello world");
+//     let s_ref = &s;
+//     s_ref
+// }
+
+// fn main() {
+//     let s_main = return_a_string();
+//     println!("{}", s_main);
+// }
+
+// fn add_ref(v: &mut Vec<&i32>, n: i32) {
+//     let r = &n;
+//     v.push(r);
+// }
+
+// If this function were allowed, we could call add_ref like this:
+
+fn add_ref(v: &mut Vec<&i32>, n: i32) {
+    let r = &n;
+    v.push(r);
+}
+
+fn main() {
+    let mut nums = Vec::new();
+    add_ref(&mut nums, 0);
+    println!("{}", nums[0]);
+}
+
+// At L1, by pushing &n into v, the vector now contains a reference to data within the frame for add_ref.
+// However, when add_ref returns, its frame is deallocated.
+// Therefore the reference in the vector points to deallocated memory.
+// Using the reference by printing v[0] violates memory safety.
+
+// References provide the ability to read and write data without consuming ownership of it.
+// References are created with borrows (& and &mut) and used with dereferences (*), often implicitly.
+
+// Rust's borrow checker enforces a system of permissions that ensures references are used safely:
+// All variables can read, own, and (optionally) write their data.
+// Creating a reference will transfer permissions from the borrowed path to the reference.
+// Permissions are returned once the reference's lifetime has ended.
+// Data must outlive all references that point to it.
