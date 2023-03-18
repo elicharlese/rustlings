@@ -81,3 +81,97 @@
 // }
 
 // This program does not compile. The condition to an if-expression must be a boolean. Rust does not have a concept of "truthy" or "falsy" values.
+
+// fn main() {
+//     let mut counter = 0;
+
+//     let result = loop {
+//         counter += 1;
+
+//         if counter == 10 {
+//             break counter * 2;
+//         }
+//     };
+
+//     println!("The result is {result}");
+// }
+
+// Loops Labels to Disambiguate Between Multiple Loops
+// If you have loops within loops, break and continue apply to the innermost loop at that point.
+// You can optionally specify a loop label on a loop that we can then use with break or continue to specify that those keywords apply to the labeled loop instead of the innermost loop.
+// Loop labels must begin with a single quote.
+
+// fn main() {
+//     let mut count = 0;
+//     'counting_up: loop {
+//         println!("count = {count}");
+//         let mut remaining = 10;
+
+//         loop {
+//             println!("remaining = {remaining}");
+//             if remaining == 9 {
+//                 break;
+//             }
+//             if count == 2 {
+//                 break 'counting_up;
+//             }
+//             remaining -= 1;
+//         }
+
+//         count += 1;
+//     }
+//     println!("End count = {count}");
+// }
+
+// Conditional Loops with while
+// However, this pattern is so common that Rust has a built-in language construct for it, called a while loop.
+
+// fn main() {
+//     let mut number = 3;
+
+//     while number != 0 {
+//         println!("{number}!");
+
+//         number -= 1;
+//     }
+
+//     println!("LIFTOFF!!!");
+// }
+
+// While a condition holds true, the code runs; otherwise, it exits the loop.
+
+// Looping Through a Collection with for
+// You can choose to use the while construct to loop over the elements of a collection, such as an array.
+
+// fn main() {
+//     let a = [10, 20, 30, 40, 50];
+//     let mut index = 0;
+
+//     while index < 5 {
+//         println!("the value is: {}", a[index]);
+
+//         index += 1;
+//     }
+// }
+
+// As a more concise alternative, you can use a for loop and execute some code for each item in a collection.
+
+// fn main() {
+//     let a = [10, 20, 30, 40, 50];
+
+//     for element in a {
+//         println!("the value is: {element}");
+//     }
+// }
+
+// The way to do that would be to use a Range, provided by the standard library, which generates all numbers in sequence 
+// starting from one number and ending before another number.
+
+fn main() {
+    for number in (1..4).rev() {
+        println!("{number}!");
+    }
+    println!("LIFTOFF!!!");
+}
+
+// rev, to reverse the range

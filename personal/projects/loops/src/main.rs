@@ -19,7 +19,20 @@
 // continue; which in a loop tells the program to skip over any remaining code in this iteration of the loop and go to the next iteration.
 
 // Returning values from a loop
+// One of the uses of a loop is to retry an operation you know might fail, such as checking whether a thread has completed its job.
+// You might also need to pass the result of that operation out of the loop to the rest of your code.
+// To do this, you can add the value you want returned after the break expression you use to stop the loop
 
+fn main() {
+    let mut counter = 0;
 
+    let result = loop {
+        counter += 1;
 
+        if counter == 10 {
+            break counter * 2;
+        }
+    };
 
+    println!("The result is {result}");
+}
