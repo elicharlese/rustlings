@@ -498,16 +498,16 @@
 
 // If this function were allowed, we could call add_ref like this:
 
-fn add_ref(v: &mut Vec<&i32>, n: i32) {
-    let r = &n;
-    v.push(r);
-}
+// fn add_ref(v: &mut Vec<&i32>, n: i32) {
+//     let r = &n;
+//     v.push(r);
+// }
 
-fn main() {
-    let mut nums = Vec::new();
-    add_ref(&mut nums, 0);
-    println!("{}", nums[0]);
-}
+// fn main() {
+//     let mut nums = Vec::new();
+//     add_ref(&mut nums, 0);
+//     println!("{}", nums[0]);
+// }
 
 // At L1, by pushing &n into v, the vector now contains a reference to data within the frame for add_ref.
 // However, when add_ref returns, its frame is deallocated.
