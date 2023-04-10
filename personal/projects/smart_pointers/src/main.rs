@@ -875,44 +875,61 @@
 //  The initial drop(x) decrements the reference count, but does not drop the value because y is still live.
 //  Then dropping y finds that the reference count is 0, and drops Example.
 
-RefCell<T> and the Interior Mutability Pattern
-Interior mutability is a design pattern in Rust that allows you to mutate data even when there are immutable references to that data; normally, this action is disallowed by the borrowing rules. To mutate data, the pattern uses unsafe code inside a data structure to bend Rust’s usual rules that govern mutation and borrowing. Unsafe code indicates to the compiler that we’re checking the rules manually instead of relying on the compiler to check them for us; we will discuss unsafe code more in Chapter 19.
+// RefCell<T> and the Interior Mutability Pattern
+// Interior mutability is a design pattern in Rust that allows you to mutate data even when there are immutable references to that data; normally, this action is disallowed by the borrowing rules.
+// To mutate data, the pattern uses unsafe code inside a data structure to bend Rust’s usual rules that govern mutation and borrowing.
+// Unsafe code indicates to the compiler that we’re checking the rules manually instead of relying on the compiler to check them for us; we will discuss unsafe code more in Chapter 19.
 
-We can use types that use the interior mutability pattern only when we can ensure that the borrowing rules will be followed at runtime, even though the compiler can’t guarantee that. The unsafe code involved is then wrapped in a safe API, and the outer type is still immutable.
+// We can use types that use the interior mutability pattern only when we can ensure that the borrowing rules will be followed at runtime, even though the compiler can’t guarantee that.
+// The unsafe code involved is then wrapped in a safe API, and the outer type is still immutable.
 
-Let’s explore this concept by looking at the RefCell<T> type that follows the interior mutability pattern.
+// Let’s explore this concept by looking at the RefCell<T> type that follows the interior mutability pattern.
 
-Enforcing Borrowing Rules at Runtime with RefCell<T>
-Unlike Rc<T>, the RefCell<T> type represents single ownership over the data it holds. So, what makes RefCell<T> different from a type like Box<T>? Recall the borrowing rules you learned in Chapter 4:
+// Enforcing Borrowing Rules at Runtime with RefCell<T>
+// Unlike Rc<T>, the RefCell<T> type represents single ownership over the data it holds.
+// So, what makes RefCell<T> different from a type like Box<T>?
+// Recall the borrowing rules you learned in Chapter 4:
 
-At any given time, you can have either (but not both) one mutable reference or any number of immutable references.
-References must always be valid.
-With references and Box<T>, the borrowing rules’ invariants are enforced at compile time. With RefCell<T>, these invariants are enforced at runtime. With references, if you break these rules, you’ll get a compiler error. With RefCell<T>, if you break these rules, your program will panic and exit.
+// At any given time, you can have either (but not both) one mutable reference or any number of immutable references.
+// References must always be valid.
+// With references and Box<T>, the borrowing rules’ invariants are enforced at compile time.
+// With RefCell<T>, these invariants are enforced at runtime.
+// With references, if you break these rules, you’ll get a compiler error.
+// With RefCell<T>, if you break these rules, your program will panic and exit.
 
-The advantages of checking the borrowing rules at compile time are that errors will be caught sooner in the development process, and there is no impact on runtime performance because all the analysis is completed beforehand. For those reasons, checking the borrowing rules at compile time is the best choice in the majority of cases, which is why this is Rust’s default.
+// The advantages of checking the borrowing rules at compile time are that errors will be caught sooner in the development process, and there is no impact on runtime performance because all the analysis is completed beforehand.
+// For those reasons, checking the borrowing rules at compile time is the best choice in the majority of cases, which is why this is Rust’s default.
 
-The advantage of checking the borrowing rules at runtime instead is that certain memory-safe scenarios are then allowed, where they would’ve been disallowed by the compile-time checks. Static analysis, like the Rust compiler, is inherently conservative. Some properties of code are impossible to detect by analyzing the code: the most famous example is the Halting Problem, which is beyond the scope of this book but is an interesting topic to research.
+// The advantage of checking the borrowing rules at runtime instead is that certain memory-safe scenarios are then allowed, where they would’ve been disallowed by the compile-time checks.
+// Static analysis, like the Rust compiler, is inherently conservative.
+// Some properties of code are impossible to detect by analyzing the code: the most famous example is the Halting Problem, which is beyond the scope of this book but is an interesting topic to research.
 
-Because some analysis is impossible, if the Rust compiler can’t be sure the code complies with the ownership rules, it might reject a correct program; in this way, it’s conservative. If Rust accepted an incorrect program, users wouldn’t be able to trust in the guarantees Rust makes. However, if Rust rejects a correct program, the programmer will be inconvenienced, but nothing catastrophic can occur. The RefCell<T> type is useful when you’re sure your code follows the borrowing rules but the compiler is unable to understand and guarantee that.
+// Because some analysis is impossible, if the Rust compiler can’t be sure the code complies with the ownership rules, it might reject a correct program; in this way, it’s conservative.
+// If Rust accepted an incorrect program, users wouldn’t be able to trust in the guarantees Rust makes.
+// However, if Rust rejects a correct program, the programmer will be inconvenienced, but nothing catastrophic can occur.
+// The RefCell<T> type is useful when you’re sure your code follows the borrowing rules but the compiler is unable to understand and guarantee that.
 
-Similar to Rc<T>, RefCell<T> is only for use in single-threaded scenarios and will give you a compile-time error if you try using it in a multithreaded context. We’ll talk about how to get the functionality of RefCell<T> in a multithreaded program in Chapter 16.
+// Similar to Rc<T>, RefCell<T> is only for use in single-threaded scenarios and will give you a compile-time error if you try using it in a multithreaded context.
+//  We’ll talk about how to get the functionality of RefCell<T> in a multithreaded program in Chapter 16.
 
-Here is a recap of the reasons to choose Box<T>, Rc<T>, or RefCell<T>:
+// Here is a recap of the reasons to choose Box<T>, Rc<T>, or RefCell<T>:
 
-Rc<T> enables multiple owners of the same data; Box<T> and RefCell<T> have single owners.
-Box<T> allows immutable or mutable borrows checked at compile time; Rc<T> allows only immutable borrows checked at compile time; RefCell<T> allows immutable or mutable borrows checked at runtime.
-Because RefCell<T> allows mutable borrows checked at runtime, you can mutate the value inside the RefCell<T> even when the RefCell<T> is immutable.
-Mutating the value inside an immutable value is the interior mutability pattern. Let’s look at a situation in which interior mutability is useful and examine how it’s possible.
+// Rc<T> enables multiple owners of the same data; Box<T> and RefCell<T> have single owners.
+// Box<T> allows immutable or mutable borrows checked at compile time; Rc<T> allows only immutable borrows checked at compile time; RefCell<T> allows immutable or mutable borrows checked at runtime.
+// Because RefCell<T> allows mutable borrows checked at runtime, you can mutate the value inside the RefCell<T> even when the RefCell<T> is immutable.
+// Mutating the value inside an immutable value is the interior mutability pattern.
+//  Let’s look at a situation in which interior mutability is useful and examine how it’s possible.
 
-Interior Mutability: A Mutable Borrow to an Immutable Value
-A consequence of the borrowing rules is that when you have an immutable value, you can’t borrow it mutably. For example, this code won’t compile:
+// Interior Mutability: A Mutable Borrow to an Immutable Value
+// A consequence of the borrowing rules is that when you have an immutable value, you can’t borrow it mutably.
+// For example, this code won’t compile:
 
-fn main() {
-    let x = 5;
-    let y = &mut x;
-}
+// fn main() {
+//     let x = 5;
+//     let y = &mut x;
+// }
 
-If you tried to compile this code, you’d get the following error:
+// If you tried to compile this code, you’d get the following error:
 
 // $ cargo run
 //    Compiling borrowing v0.1.0 (file:///projects/borrowing)
@@ -927,18 +944,31 @@ If you tried to compile this code, you’d get the following error:
 // For more information about this error, try `rustc --explain E0596`.
 // error: could not compile `borrowing` due to previous error
 
-However, there are situations in which it would be useful for a value to mutate itself in its methods but appear immutable to other code. Code outside the value’s methods would not be able to mutate the value. Using RefCell<T> is one way to get the ability to have interior mutability, but RefCell<T> doesn’t get around the borrowing rules completely: the borrow checker in the compiler allows this interior mutability, and the borrowing rules are checked at runtime instead. If you violate the rules, you’ll get a panic! instead of a compiler error.
+// However, there are situations in which it would be useful for a value to mutate itself in its methods but appear immutable to other code.
+// Code outside the value’s methods would not be able to mutate the value.
+// Using RefCell<T> is one way to get the ability to have interior mutability, but RefCell<T> doesn’t get around the borrowing rules completely: the borrow checker in the compiler allows this interior mutability, and the borrowing rules are checked at runtime instead.
+// If you violate the rules, you’ll get a panic! instead of a compiler error.
 
-Let’s work through a practical example where we can use RefCell<T> to mutate an immutable value and see why that is useful.
+// Let’s work through a practical example where we can use RefCell<T> to mutate an immutable value and see why that is useful.
 
-A Use Case for Interior Mutability: Mock Objects
-Sometimes during testing a programmer will use a type in place of another type, in order to observe particular behavior and assert it's implemented correctly. This placeholder type is called a test double. Think of it in the sense of a "stunt double" in filmmaking, where a person steps in and substitutes for an actor to do a particular tricky scene. Test doubles stand in for other types when we're running tests. Mock objects are specific types of test doubles that record what happens during a test so you can assert that the correct actions took place.
+// A Use Case for Interior Mutability: Mock Objects
+// Sometimes during testing a programmer will use a type in place of another type, in order to observe particular behavior and assert it's implemented correctly.
+// This placeholder type is called a test double.
+// Think of it in the sense of a "stunt double" in filmmaking, where a person steps in and substitutes for an actor to do a particular tricky scene.
+// Test doubles stand in for other types when we're running tests.
+// Mock objects are specific types of test doubles that record what happens during a test so you can assert that the correct actions took place.
 
-Rust doesn’t have objects in the same sense as other languages have objects, and Rust doesn’t have mock object functionality built into the standard library as some other languages do. However, you can definitely create a struct that will serve the same purposes as a mock object.
+// Rust doesn’t have objects in the same sense as other languages have objects, and Rust doesn’t have mock object functionality built into the standard library as some other languages do.
+// However, you can definitely create a struct that will serve the same purposes as a mock object.
 
-Here’s the scenario we’ll test: we’ll create a library that tracks a value against a maximum value and sends messages based on how close to the maximum value the current value is. This library could be used to keep track of a user’s quota for the number of API calls they’re allowed to make, for example.
+// Here’s the scenario we’ll test: we’ll create a library that tracks a value against a maximum value and sends messages based on how close to the maximum value the current value is.
+//  This library could be used to keep track of a user’s quota for the number of API calls they’re allowed to make, for example.
 
-Our library will only provide the functionality of tracking how close to the maximum a value is and what the messages should be at what times. Applications that use our library will be expected to provide the mechanism for sending the messages: the application could put a message in the application, send an email, send a text message, or something else. The library doesn’t need to know that detail. All it needs is something that implements a trait we’ll provide called Messenger. Listing 15-20 shows the library code:
+// Our library will only provide the functionality of tracking how close to the maximum a value is and what the messages should be at what times.
+// Applications that use our library will be expected to provide the mechanism for sending the messages: the application could put a message in the application, send an email, send a text message, or something else.
+// The library doesn’t need to know that detail.
+// All it needs is something that implements a trait we’ll provide called Messenger.
+// Listing 15-20 shows the library code:
 
 // pub trait Messenger {
 //     fn send(&self, msg: &str);
@@ -979,9 +1009,15 @@ Our library will only provide the functionality of tracking how close to the max
 //     }
 // }
 
-One important part of this code is that the Messenger trait has one method called send that takes an immutable reference to self and the text of the message. This trait is the interface our mock object needs to implement so that the mock can be used in the same way a real object is. The other important part is that we want to test the behavior of the set_value method on the LimitTracker. We can change what we pass in for the value parameter, but set_value doesn’t return anything for us to make assertions on. We want to be able to say that if we create a LimitTracker with something that implements the Messenger trait and a particular value for max, when we pass different numbers for value, the messenger is told to send the appropriate messages.
+// One important part of this code is that the Messenger trait has one method called send that takes an immutable reference to self and the text of the message.
+// This trait is the interface our mock object needs to implement so that the mock can be used in the same way a real object is.
+// The other important part is that we want to test the behavior of the set_value method on the LimitTracker.
+// We can change what we pass in for the value parameter, but set_value doesn’t return anything for us to make assertions on.
+// We want to be able to say that if we create a LimitTracker with something that implements the Messenger trait and a particular value for max, when we pass different numbers for value, the messenger is told to send the appropriate messages.
 
-We need a mock object that, instead of sending an email or text message when we call send, will only keep track of the messages it’s told to send. We can create a new instance of the mock object, create a LimitTracker that uses the mock object, call the set_value method on LimitTracker, and then check that the mock object has the messages we expect. Listing 15-21 shows an attempt to implement a mock object to do just that, but the borrow checker won’t allow it:
+// We need a mock object that, instead of sending an email or text message when we call send, will only keep track of the messages it’s told to send.
+// We can create a new instance of the mock object, create a LimitTracker that uses the mock object, call the set_value method on LimitTracker, and then check that the mock object has the messages we expect.
+// Listing 15-21 shows an attempt to implement a mock object to do just that, but the borrow checker won’t allow it:
 
 // #[cfg(test)]
 // mod tests {
@@ -1016,9 +1052,14 @@ We need a mock object that, instead of sending an email or text message when we 
 //     }
 // }
 
-This test code defines a MockMessenger struct that has a sent_messages field with a Vec of String values to keep track of the messages it’s told to send. We also define an associated function new to make it convenient to create new MockMessenger values that start with an empty list of messages. We then implement the Messenger trait for MockMessenger so we can give a MockMessenger to a LimitTracker. In the definition of the send method, we take the message passed in as a parameter and store it in the MockMessenger list of sent_messages.
+// This test code defines a MockMessenger struct that has a sent_messages field with a Vec of String values to keep track of the messages it’s told to send.
+// We also define an associated function new to make it convenient to create new MockMessenger values that start with an empty list of messages.
+// We then implement the Messenger trait for MockMessenger so we can give a MockMessenger to a LimitTracker.
+// In the definition of the send method, we take the message passed in as a parameter and store it in the MockMessenger list of sent_messages.
 
-In the test, we’re testing what happens when the LimitTracker is told to set value to something that is more than 75 percent of the max value. First, we create a new MockMessenger, which will start with an empty list of messages. Then we create a new LimitTracker and give it a reference to the new MockMessenger and a max value of 100. We call the set_value method on the LimitTracker with a value of 80, which is more than 75 percent of 100. Then we assert that the list of messages that the MockMessenger is keeping track of should now have one message in it.
+// In the test, we’re testing what happens when the LimitTracker is told to set value to something that is more than 75 percent of the max value.
+// First, we create a new MockMessenger, which will start with an empty list of messages. Then we create a new LimitTracker and give it a reference to the new MockMessenger and a max value of 100.
+// We call the set_value method on the LimitTracker with a value of 80, which is more than 75 percent of 100. Then we assert that the list of messages that the MockMessenger is keeping track of should now have one message in it.
 
 // $ cargo test
 //    Compiling limit-tracker v0.1.0 (file:///projects/limit-tracker)
@@ -1035,9 +1076,12 @@ In the test, we’re testing what happens when the LimitTracker is told to set v
 // error: could not compile `limit-tracker` due to previous error
 // warning: build failed, waiting for other jobs to finish...
 
-We can’t modify the MockMessenger to keep track of the messages, because the send method takes an immutable reference to self. We also can’t take the suggestion from the error text to use &mut self instead, because then the signature of send wouldn’t match the signature in the Messenger trait definition (feel free to try and see what error message you get).
+// We can’t modify the MockMessenger to keep track of the messages, because the send method takes an immutable reference to self.
+// We also can’t take the suggestion from the error text to use &mut self instead, because then the signature of send wouldn’t match the signature in the Messenger trait definition (feel free to try and see what error message you get).
 
-This is a situation in which interior mutability can help! We’ll store the sent_messages within a RefCell<T>, and then the send method will be able to modify sent_messages to store the messages we’ve seen. Listing 15-22 shows what that looks like:
+// This is a situation in which interior mutability can help!
+// We’ll store the sent_messages within a RefCell<T>, and then the send method will be able to modify sent_messages to store the messages we’ve seen.
+// Listing 15-22 shows what that looks like:
 
 // #[cfg(test)]
 // mod tests {
@@ -1070,20 +1114,31 @@ This is a situation in which interior mutability can help! We’ll store the sen
 //     }
 // }
 
-The sent_messages field is now of type RefCell<Vec<String>> instead of Vec<String>. In the new function, we create a new RefCell<Vec<String>> instance around the empty vector.
+// The sent_messages field is now of type RefCell<Vec<String>> instead of Vec<String>.
+// In the new function, we create a new RefCell<Vec<String>> instance around the empty vector.
 
-For the implementation of the send method, the first parameter is still an immutable borrow of self, which matches the trait definition. We call borrow_mut on the RefCell<Vec<String>> in self.sent_messages to get a mutable reference to the value inside the RefCell<Vec<String>>, which is the vector. Then we can call push on the mutable reference to the vector to keep track of the messages sent during the test.
+// For the implementation of the send method, the first parameter is still an immutable borrow of self, which matches the trait definition.
+// We call borrow_mut on the RefCell<Vec<String>> in self.sent_messages to get a mutable reference to the value inside the RefCell<Vec<String>>, which is the vector.
+// Then we can call push on the mutable reference to the vector to keep track of the messages sent during the test.
 
-The last change we have to make is in the assertion: to see how many items are in the inner vector, we call borrow on the RefCell<Vec<String>> to get an immutable reference to the vector.
+// The last change we have to make is in the assertion: to see how many items are in the inner vector, we call borrow on the RefCell<Vec<String>> to get an immutable reference to the vector.
 
-Now that you’ve seen how to use RefCell<T>, let’s dig into how it works!
+// Now that you’ve seen how to use RefCell<T>, let’s dig into how it works!
 
-Keeping Track of Borrows at Runtime with RefCell<T>
-When creating immutable and mutable references, we use the & and &mut syntax, respectively. With RefCell<T>, we use the borrow and borrow_mut methods, which are part of the safe API that belongs to RefCell<T>. The borrow method returns the smart pointer type Ref<T>, and borrow_mut returns the smart pointer type RefMut<T>. Both types implement Deref, so we can treat them like regular references.
+// Keeping Track of Borrows at Runtime with RefCell<T>
+// When creating immutable and mutable references, we use the & and &mut syntax, respectively.
+// With RefCell<T>, we use the borrow and borrow_mut methods, which are part of the safe API that belongs to RefCell<T>.
+// The borrow method returns the smart pointer type Ref<T>, and borrow_mut returns the smart pointer type RefMut<T>.
+// Both types implement Deref, so we can treat them like regular references.
 
-The RefCell<T> keeps track of how many Ref<T> and RefMut<T> smart pointers are currently active. Every time we call borrow, the RefCell<T> increases its count of how many immutable borrows are active. When a Ref<T> value goes out of scope, the count of immutable borrows goes down by one. Just like the compile-time borrowing rules, RefCell<T> lets us have many immutable borrows or one mutable borrow at any point in time.
+// The RefCell<T> keeps track of how many Ref<T> and RefMut<T> smart pointers are currently active.
+// Every time we call borrow, the RefCell<T> increases its count of how many immutable borrows are active.
+// When a Ref<T> value goes out of scope, the count of immutable borrows goes down by one.
+// Just like the compile-time borrowing rules, RefCell<T> lets us have many immutable borrows or one mutable borrow at any point in time.
 
-If we try to violate these rules, rather than getting a compiler error as we would with references, the implementation of RefCell<T> will panic at runtime. Listing 15-23 shows a modification of the implementation of send in Listing 15-22. We’re deliberately trying to create two mutable borrows active for the same scope to illustrate that RefCell<T> prevents us from doing this at runtime.
+// If we try to violate these rules, rather than getting a compiler error as we would with references, the implementation of RefCell<T> will panic at runtime.
+// Listing 15-23 shows a modification of the implementation of send in Listing 15-22.
+// We’re deliberately trying to create two mutable borrows active for the same scope to illustrate that RefCell<T> prevents us from doing this at runtime.
 
 // impl Messenger for MockMessenger {
 //     fn send(&self, message: &str) {
@@ -1095,7 +1150,10 @@ If we try to violate these rules, rather than getting a compiler error as we wou
 //     }
 // }
 
-We create a variable one_borrow for the RefMut<T> smart pointer returned from borrow_mut. Then we create another mutable borrow in the same way in the variable two_borrow. This makes two mutable references in the same scope, which isn’t allowed. When we run the tests for our library, the code in Listing 15-23 will compile without any errors, but the test will fail:
+// We create a variable one_borrow for the RefMut<T> smart pointer returned from borrow_mut.
+// Then we create another mutable borrow in the same way in the variable two_borrow.
+// This makes two mutable references in the same scope, which isn’t allowed.
+// When we run the tests for our library, the code in Listing 15-23 will compile without any errors, but the test will fail:
 
 // $ cargo test
 //    Compiling limit-tracker v0.1.0 (file:///projects/limit-tracker)
@@ -1119,14 +1177,22 @@ We create a variable one_borrow for the RefMut<T> smart pointer returned from bo
 
 // error: test failed, to rerun pass '--lib'
 
-Notice that the code panicked with the message already borrowed: BorrowMutError. This is how RefCell<T> handles violations of the borrowing rules at runtime.
+// Notice that the code panicked with the message already borrowed: BorrowMutError.
+// This is how RefCell<T> handles violations of the borrowing rules at runtime.
 
-Choosing to catch borrowing errors at runtime rather than compile time, as we've done here, means you'd potentially be finding mistakes in your code later in the development process: possibly not until your code was deployed to production. Also, your code would incur a small runtime performance penalty as a result of keeping track of the borrows at runtime rather than compile time. However, using RefCell<T> makes it possible to write a mock object that can modify itself to keep track of the messages it has seen while you’re using it in a context where only immutable values are allowed. You can use RefCell<T> despite its trade-offs to get more functionality than regular references provide.
+// Choosing to catch borrowing errors at runtime rather than compile time, as we've done here, means you'd potentially be finding mistakes in your code later in the development process: possibly not until your code was deployed to production.
+// Also, your code would incur a small runtime performance penalty as a result of keeping track of the borrows at runtime rather than compile time.
+// However, using RefCell<T> makes it possible to write a mock object that can modify itself to keep track of the messages it has seen while you’re using it in a context where only immutable values are allowed.
+// You can use RefCell<T> despite its trade-offs to get more functionality than regular references provide.
 
-Having Multiple Owners of Mutable Data by Combining Rc<T> and RefCell<T>
-A common way to use RefCell<T> is in combination with Rc<T>. Recall that Rc<T> lets you have multiple owners of some data, but it only gives immutable access to that data. If you have an Rc<T> that holds a RefCell<T>, you can get a value that can have multiple owners and that you can mutate!
+// Having Multiple Owners of Mutable Data by Combining Rc<T> and RefCell<T>
+// A common way to use RefCell<T> is in combination with Rc<T>.
+// Recall that Rc<T> lets you have multiple owners of some data, but it only gives immutable access to that data.
+// If you have an Rc<T> that holds a RefCell<T>, you can get a value that can have multiple owners and that you can mutate!
 
-For example, recall the cons list example in Listing 15-18 where we used Rc<T> to allow multiple lists to share ownership of another list. Because Rc<T> holds only immutable values, we can’t change any of the values in the list once we’ve created them. Let’s add in RefCell<T> to gain the ability to change the values in the lists. Listing 15-24 shows that by using a RefCell<T> in the Cons definition, we can modify the value stored in all the lists:
+// For example, recall the cons list example in Listing 15-18 where we used Rc<T> to allow multiple lists to share ownership of another list.
+// Because Rc<T> holds only immutable values, we can’t change any of the values in the list once we’ve created them. Let’s add in RefCell<T> to gain the ability to change the values in the lists.
+// Listing 15-24 shows that by using a RefCell<T> in the Cons definition, we can modify the value stored in all the lists:
 
 // #[derive(Debug)]
 // enum List {
@@ -1153,13 +1219,17 @@ For example, recall the cons list example in Listing 15-18 where we used Rc<T> t
 //     println!("c after = {:?}", c);
 // }
 
-We create a value that is an instance of Rc<RefCell<i32>> and store it in a variable named value so we can access it directly later. Then we create a List in a with a Cons variant that holds value. We need to clone value so both a and value have ownership of the inner 5 value rather than transferring ownership from value to a or having a borrow from value.
+// We create a value that is an instance of Rc<RefCell<i32>> and store it in a variable named value so we can access it directly later.
+// Then we create a List in a with a Cons variant that holds value.
+// We need to clone value so both a and value have ownership of the inner 5 value rather than transferring ownership from value to a or having a borrow from value.
 
-We wrap the list a in an Rc<T> so when we create lists b and c, they can both refer to a, which is what we did in Listing 15-18.
+// We wrap the list a in an Rc<T> so when we create lists b and c, they can both refer to a, which is what we did in Listing 15-18.
 
-After we’ve created the lists in a, b, and c, we want to add 10 to the value in value. We do this by calling borrow_mut on value, which uses the automatic dereferencing feature we discussed in Chapter 5 (see the section “Where’s the -> Operator?”) to dereference the Rc<T> to the inner RefCell<T> value. The borrow_mut method returns a RefMut<T> smart pointer, and we use the dereference operator on it and change the inner value.
+// After we’ve created the lists in a, b, and c, we want to add 10 to the value in value.
+// We do this by calling borrow_mut on value, which uses the automatic dereferencing feature we discussed in Chapter 5 (see the section “Where’s the -> Operator?”) to dereference the Rc<T> to the inner RefCell<T> value.
+// The borrow_mut method returns a RefMut<T> smart pointer, and we use the dereference operator on it and change the inner value.
 
-When we print a, b, and c, we can see that they all have the modified value of 15 rather than 5:
+// When we print a, b, and c, we can see that they all have the modified value of 15 rather than 5:
 
 // $ cargo run
 //    Compiling cons-list v0.1.0 (file:///projects/cons-list)
@@ -1169,68 +1239,377 @@ When we print a, b, and c, we can see that they all have the modified value of 1
 // b after = Cons(RefCell { value: 3 }, Cons(RefCell { value: 15 }, Nil))
 // c after = Cons(RefCell { value: 4 }, Cons(RefCell { value: 15 }, Nil))
 
-This technique is pretty neat! By using RefCell<T>, we have an outwardly immutable List value. But we can use the methods on RefCell<T> that provide access to its interior mutability so we can modify our data when we need to. The runtime checks of the borrowing rules protect us from data races, and it’s sometimes worth trading a bit of speed for this flexibility in our data structures. Note that RefCell<T> does not work for multithreaded code! Mutex<T> is the thread-safe version of RefCell<T> and we’ll discuss Mutex<T> in Chapter 16.
+// This technique is pretty neat!
+// By using RefCell<T>, we have an outwardly immutable List value.
+// But we can use the methods on RefCell<T> that provide access to its interior mutability so we can modify our data when we need to.
+// The runtime checks of the borrowing rules protect us from data races, and it’s sometimes worth trading a bit of speed for this flexibility in our data structures.
+// Note that RefCell<T> does not work for multithreaded code! Mutex<T> is the thread-safe version of RefCell<T> and we’ll discuss Mutex<T> in Chapter 16.
 
-Question 1
-Which of the following best describes the concept of interior mutability in Rust?
-Allowing data to be mutated through an immutable reference
-The main idea of interior mutability is taking a value of type &T and being able to safely mutate data within T.
+// Question 1
+// Which of the following best describes the concept of interior mutability in Rust?
+// Allowing data to be mutated through an immutable reference
+// The main idea of interior mutability is taking a value of type &T and being able to safely mutate data within T.
 
-Question 2
-Consider an API that tracks the number of calls to a particular method:
+// Question 2
+// Consider an API that tracks the number of calls to a particular method:
 
-struct Api {
-    count: ???
-}
-impl Api {
-    fn some_method(&self) {
-        // increment count
-        // rest of the method...
-    }
-}
-Say the count is represented as a usize. What is the most appropriate wrapper type to use for this situation?
-RefCell<usize>
-Here a RefCell is useful to mutate an internal field even though some_method takes an immutable reference as input.
+// struct Api {
+//     count: ???
+// }
+// impl Api {
+//     fn some_method(&self) {
+//         // increment count
+//         // rest of the method...
+//     }
+// }
 
-Question 3
-Consider the following incorrect implementation of a RefCell that does not check whether the interior value is borrowed:
+// Say the count is represented as a usize.
+// What is the most appropriate wrapper type to use for this situation?
 
-use std::cell::UnsafeCell;
-struct BadRefCell<T>(UnsafeCell<T>);
-impl<T> BadRefCell<T> {
-    pub fn borrow_mut(&self) -> &mut T {
-        unsafe { &mut *self.0.get() }
-    }
-}
-Now say we have a BadRefCell like this:
+// RefCell<usize>
+// Here a RefCell is useful to mutate an internal field even though some_method takes an immutable reference as input.
 
-let v = BadRefCell(UnsafeCell::new(vec![1, 2, 3]));
-Which of the following snippets would violate memory safety using this API?
+// Question 3
+// Consider the following incorrect implementation of a RefCell that does not check whether the interior value is borrowed:
 
-let v1 = v.borrow_mut();
-let n = &v1[0];
-v.borrow_mut().push(0);
-println!("{n}");
+// use std::cell::UnsafeCell;
+// struct BadRefCell<T>(UnsafeCell<T>);
+// impl<T> BadRefCell<T> {
+//     pub fn borrow_mut(&self) -> &mut T {
+//         unsafe { &mut *self.0.get() }
+//     }
+// }
+// Now say we have a BadRefCell like this:
 
-The BadRefCell allows us to have two mutable references to the underlying data at the same time, which permits a memory safety violation like reallocating a vector while holding a reference to its contents.
+// let v = BadRefCell(UnsafeCell::new(vec![1, 2, 3]));
+// Which of the following snippets would violate memory safety using this API?
 
+// let v1 = v.borrow_mut();
+// let n = &v1[0];
+// v.borrow_mut().push(0);
+// println!("{n}");
 
+// The BadRefCell allows us to have two mutable references to the underlying data at the same time, which permits a memory safety violation like reallocating a vector while holding a reference to its contents.
 
+// Reference Cycles Can Leak Memory
+// Rust’s memory safety guarantees make it difficult, but not impossible, to accidentally create memory that is never cleaned up (known as a memory leak).
+// Preventing memory leaks entirely is not one of Rust’s guarantees, meaning memory leaks are memory safe in Rust.
+// We can see that Rust allows memory leaks by using Rc<T> and RefCell<T>: it’s possible to create references where items refer to each other in a cycle.
+// This creates memory leaks because the reference count of each item in the cycle will never reach 0, and the values will never be dropped.
 
+// Creating a Reference Cycle
+// Let’s look at how a reference cycle might happen and how to prevent it, starting with the definition of the List enum and a tail method in Listing 15-25:
 
+// use crate::List::{Cons, Nil};
+// use std::cell::RefCell;
+// use std::rc::Rc;
 
+// #[derive(Debug)]
+// enum List {
+//     Cons(i32, RefCell<Rc<List>>),
+//     Nil,
+// }
 
+// impl List {
+//     fn tail(&self) -> Option<&RefCell<Rc<List>>> {
+//         match self {
+//             Cons(_, item) => Some(item),
+//             Nil => None,
+//         }
+//     }
+// }
 
+// fn main() {}
 
+// We’re using another variation of the List definition from Listing 15-5.
+// The second element in the Cons variant is now RefCell<Rc<List>>, meaning that instead of having the ability to modify the i32 value as we did in Listing 15-24, we want to modify the List value a Cons variant is pointing to. We’re also adding a tail method to make it convenient for us to access the second item if we have a Cons variant.
 
+// In Listing 15-26, we’re adding a main function that uses the definitions in Listing 15-25.
+// This code creates a list in a and a list in b that points to the list in a. Then it modifies the list in a to point to b, creating a reference cycle. There are println! statements along the way to show what the reference counts are at various points in this process.
 
+// fn main() {
+//     let a = Rc::new(Cons(5, RefCell::new(Rc::new(Nil))));
 
+//     println!("a initial rc count = {}", Rc::strong_count(&a));
+//     println!("a next item = {:?}", a.tail());
 
+//     let b = Rc::new(Cons(10, RefCell::new(Rc::clone(&a))));
 
+//     println!("a rc count after b creation = {}", Rc::strong_count(&a));
+//     println!("b initial rc count = {}", Rc::strong_count(&b));
+//     println!("b next item = {:?}", b.tail());
 
+//     if let Some(link) = a.tail() {
+//         *link.borrow_mut() = Rc::clone(&b);
+//     }
 
+//     println!("b rc count after changing a = {}", Rc::strong_count(&b));
+//     println!("a rc count after changing a = {}", Rc::strong_count(&a));
 
+//     // Uncomment the next line to see that we have a cycle;
+//     // it will overflow the stack
+//     // println!("a next item = {:?}", a.tail());
+// }
 
+// We create an Rc<List> instance holding a List value in the variable a with an initial list of 5, Nil.
+// We then create an Rc<List> instance holding another List value in the variable b that contains the value 10 and points to the list in a.
 
+// We modify a so it points to b instead of Nil, creating a cycle.
+// We do that by using the tail method to get a reference to the RefCell<Rc<List>> in a, which we put in the variable link.
+// Then we use the borrow_mut method on the RefCell<Rc<List>> to change the value inside from an Rc<List> that holds a Nil value to the Rc<List> in b.
 
+// When we run this code, keeping the last println! commented out for the moment, we’ll get this output:
 
+// $ cargo run
+//    Compiling cons-list v0.1.0 (file:///projects/cons-list)
+//     Finished dev [unoptimized + debuginfo] target(s) in 0.53s
+//      Running `target/debug/cons-list`
+// a initial rc count = 1
+// a next item = Some(RefCell { value: Nil })
+// a rc count after b creation = 2
+// b initial rc count = 1
+// b next item = Some(RefCell { value: Cons(5, RefCell { value: Nil }) })
+// b rc count after changing a = 2
+// a rc count after changing a = 2
+
+// The reference count of the Rc<List> instances in both a and b are 2 after we change the list in a to point to b.
+// At the end of main, Rust drops the variable b, which decreases the reference count of the b Rc<List> instance from 2 to 1.
+// The memory that Rc<List> has on the heap won’t be dropped at this point, because its reference count is 1, not 0.
+// Then Rust drops a, which decreases the reference count of the a Rc<List> instance from 2 to 1 as well.
+// This instance’s memory can’t be dropped either, because the other Rc<List> instance still refers to it.
+// The memory allocated to the list will remain uncollected forever.
+// To visualize this reference cycle, we’ve created a diagram in Figure 15-4.
+
+// If you uncomment the last println! and run the program, Rust will try to print this cycle with a pointing to b pointing to a and so forth until it overflows the stack.
+
+// Compared to a real-world program, the consequences creating a reference cycle in this example aren’t very dire: right after we create the reference cycle, the program ends.
+// However, if a more complex program allocated lots of memory in a cycle and held onto it for a long time, the program would use more memory than it needed and might overwhelm the system, causing it to run out of available memory.
+
+// Creating reference cycles is not easily done, but it’s not impossible either.
+// If you have RefCell<T> values that contain Rc<T> values or similar nested combinations of types with interior mutability and reference counting, you must ensure that you don’t create cycles; you can’t rely on Rust to catch them.
+// Creating a reference cycle would be a logic bug in your program that you should use automated tests, code reviews, and other software development practices to minimize.
+
+// Another solution for avoiding reference cycles is reorganizing your data structures so that some references express ownership and some references don’t.
+// As a result, you can have cycles made up of some ownership relationships and some non-ownership relationships, and only the ownership relationships affect whether or not a value can be dropped.
+// In Listing 15-25, we always want Cons variants to own their list, so reorganizing the data structure isn’t possible.
+// Let’s look at an example using graphs made up of parent nodes and child nodes to see when non-ownership relationships are an appropriate way to prevent reference cycles.
+
+// Preventing Reference Cycles: Turning an Rc<T> into a Weak<T>
+// So far, we’ve demonstrated that calling Rc::clone increases the strong_count of an Rc<T> instance, and an Rc<T> instance is only cleaned up if its strong_count is 0.
+// You can also create a weak reference to the value within an Rc<T> instance by calling Rc::downgrade and passing a reference to the Rc<T>.
+// Strong references are how you can share ownership of an Rc<T> instance. Weak references don’t express an ownership relationship, and their count doesn't affect when an Rc<T> instance is cleaned up.
+// They won’t cause a reference cycle because any cycle involving some weak references will be broken once the strong reference count of values involved is 0.
+
+// When you call Rc::downgrade, you get a smart pointer of type Weak<T>.
+// Instead of increasing the strong_count in the Rc<T> instance by 1, calling Rc::downgrade increases the weak_count by 1. The Rc<T> type uses weak_count to keep track of how many Weak<T> references exist, similar to strong_count.
+// The difference is the weak_count doesn’t need to be 0 for the Rc<T> instance to be cleaned up.
+
+// Because the value that Weak<T> references might have been dropped, to do anything with the value that a Weak<T> is pointing to, you must make sure the value still exists.
+// Do this by calling the upgrade method on a Weak<T> instance, which will return an Option<Rc<T>>.
+// You’ll get a result of Some if the Rc<T> value has not been dropped yet and a result of None if the Rc<T> value has been dropped.
+// Because upgrade returns an Option<Rc<T>>, Rust will ensure that the Some case and the None case are handled, and there won’t be an invalid pointer.
+
+// As an example, rather than using a list whose items know only about the next item, we’ll create a tree whose items know about their children items and their parent items.
+
+// Creating a Tree Data Structure: a Node with Child Nodes
+// To start, we’ll build a tree with nodes that know about their child nodes.
+// We’ll create a struct named Node that holds its own i32 value as well as references to its children Node values:
+
+// use std::cell::RefCell;
+// use std::rc::Rc;
+
+// #[derive(Debug)]
+// struct Node {
+//     value: i32,
+//     children: RefCell<Vec<Rc<Node>>>,
+// }
+
+// We want a Node to own its children, and we want to share that ownership with variables so we can access each Node in the tree directly.
+//  To do this, we define the Vec<T> items to be values of type Rc<Node>.
+//   We also want to modify which nodes are children of another node, so we have a RefCell<T> in children around the Vec<Rc<Node>>.
+
+// Next, we’ll use our struct definition and create one Node instance named leaf with the value 3 and no children, and another instance named branch with the value 5 and leaf as one of its children, as shown in Listing 15-27:
+
+// fn main() {
+//     let leaf = Rc::new(Node {
+//         value: 3,
+//         children: RefCell::new(vec![]),
+//     });
+
+//     let branch = Rc::new(Node {
+//         value: 5,
+//         children: RefCell::new(vec![Rc::clone(&leaf)]),
+//     });
+// }
+
+// We clone the Rc<Node> in leaf and store that in branch, meaning the Node in leaf now has two owners: leaf and branch.
+// We can get from branch to leaf through branch.children, but there’s no way to get from leaf to branch.
+// The reason is that leaf has no reference to branch and doesn’t know they’re related.
+// We want leaf to know that branch is its parent.
+// We’ll do that next.
+
+// Adding a Reference from a Child to Its Parent
+// To make the child node aware of its parent, we need to add a parent field to our Node struct definition.
+// The trouble is in deciding what the type of parent should be.
+// We know it can’t contain an Rc<T>, because that would create a reference cycle with leaf.parent pointing to branch and branch.children pointing to leaf, which would cause their strong_count values to never be 0.
+
+// Thinking about the relationships another way, a parent node should own its children: if a parent node is dropped, its child nodes should be dropped as well.
+// However, a child should not own its parent: if we drop a child node, the parent should still exist.
+// This is a case for weak references!
+
+// So instead of Rc<T>, we’ll make the type of parent use Weak<T>, specifically a RefCell<Weak<Node>>.
+// Now our Node struct definition looks like this:
+
+// use std::cell::RefCell;
+// use std::rc::{Rc, Weak};
+
+// #[derive(Debug)]
+// struct Node {
+//     value: i32,
+//     parent: RefCell<Weak<Node>>,
+//     children: RefCell<Vec<Rc<Node>>>,
+// }
+
+// A node will be able to refer to its parent node but doesn’t own its parent.
+//  In Listing 15-28, we update main to use this new definition so the leaf node will have a way to refer to its parent, branch:
+
+// fn main() {
+//     let leaf = Rc::new(Node {
+//         value: 3,
+//         parent: RefCell::new(Weak::new()),
+//         children: RefCell::new(vec![]),
+//     });
+
+//     println!("leaf parent = {:?}", leaf.parent.borrow().upgrade());
+
+//     let branch = Rc::new(Node {
+//         value: 5,
+//         parent: RefCell::new(Weak::new()),
+//         children: RefCell::new(vec![Rc::clone(&leaf)]),
+//     });
+
+//     *leaf.parent.borrow_mut() = Rc::downgrade(&branch);
+
+//     println!("leaf parent = {:?}", leaf.parent.borrow().upgrade());
+// }
+
+// Creating the leaf node looks similar to Listing 15-27 with the exception of the parent field: leaf starts out without a parent, so we create a new, empty Weak<Node> reference instance.
+
+// At this point, when we try to get a reference to the parent of leaf by using the upgrade method, we get a None value.
+// We see this in the output from the first println! statement:
+
+// leaf parent = None
+
+// When we create the branch node, it will also have a new Weak<Node> reference in the parent field, because branch doesn’t have a parent node.
+// We still have leaf as one of the children of branch.
+// Once we have the Node instance in branch, we can modify leaf to give it a Weak<Node> reference to its parent.
+//   We use the borrow_mut method on the RefCell<Weak<Node>> in the parent field of leaf, and then we use the Rc::downgrade function to create a Weak<Node> reference to branch from the Rc<Node> in branch.
+
+// When we print the parent of leaf again, this time we’ll get a Some variant holding branch: now leaf can access its parent!
+//  When we print leaf, we also avoid the cycle that eventually ended in a stack overflow like we had in Listing 15-26; the Weak<Node> references are printed as (Weak):
+
+// leaf parent = Some(Node { value: 5, parent: RefCell { value: (Weak) },
+// children: RefCell { value: [Node { value: 3, parent: RefCell { value: (Weak) },
+// children: RefCell { value: [] } }] } })
+
+// The lack of infinite output indicates that this code didn’t create a reference cycle.
+//  We can also tell this by looking at the values we get from calling Rc::strong_count and Rc::weak_count.
+
+// Visualizing Changes to strong_count and weak_count
+// Let’s look at how the strong_count and weak_count values of the Rc<Node> instances change by creating a new inner scope and moving the creation of branch into that scope.
+//  By doing so, we can see what happens when branch is created and then dropped when it goes out of scope.
+//   The modifications are shown in Listing 15-29:
+
+// fn main() {
+//     let leaf = Rc::new(Node {
+//         value: 3,
+//         parent: RefCell::new(Weak::new()),
+//         children: RefCell::new(vec![]),
+//     });
+
+//     println!(
+//         "leaf strong = {}, weak = {}",
+//         Rc::strong_count(&leaf),
+//         Rc::weak_count(&leaf),
+//     );
+
+//     {
+//         let branch = Rc::new(Node {
+//             value: 5,
+//             parent: RefCell::new(Weak::new()),
+//             children: RefCell::new(vec![Rc::clone(&leaf)]),
+//         });
+
+//         *leaf.parent.borrow_mut() = Rc::downgrade(&branch);
+
+//         println!(
+//             "branch strong = {}, weak = {}",
+//             Rc::strong_count(&branch),
+//             Rc::weak_count(&branch),
+//         );
+
+//         println!(
+//             "leaf strong = {}, weak = {}",
+//             Rc::strong_count(&leaf),
+//             Rc::weak_count(&leaf),
+//         );
+//     }
+
+//     println!("leaf parent = {:?}", leaf.parent.borrow().upgrade());
+//     println!(
+//         "leaf strong = {}, weak = {}",
+//         Rc::strong_count(&leaf),
+//         Rc::weak_count(&leaf),
+//     );
+// }
+
+// After leaf is created, its Rc<Node> has a strong count of 1 and a weak count of 0.
+// In the inner scope, we create branch and associate it with leaf, at which point when we print the counts, the Rc<Node> in branch will have a strong count of 1 and a weak count of 1 (for leaf.parent pointing to branch with a Weak<Node>).
+// When we print the counts in leaf, we’ll see it will have a strong count of 2, because branch now has a clone of the Rc<Node> of leaf stored in branch.children, but will still have a weak count of 0.
+
+// When the inner scope ends, branch goes out of scope and the strong count of the Rc<Node> decreases to 0, so its Node is dropped.
+// The weak count of 1 from leaf.parent has no bearing on whether or not Node is dropped, so we don’t get any memory leaks!
+
+// If we try to access the parent of leaf after the end of the scope, we’ll get None again.
+// At the end of the program, the Rc<Node> in leaf has a strong count of 1 and a weak count of 0, because the variable leaf is now the only reference to the Rc<Node> again.
+
+// All of the logic that manages the counts and value dropping is built into Rc<T> and Weak<T> and their implementations of the Drop trait.
+// By specifying that the relationship from a child to its parent should be a Weak<T> reference in the definition of Node, you’re able to have parent nodes point to child nodes and vice versa without creating a reference cycle and memory leaks.
+
+// Summary
+// This chapter covered how to use smart pointers to make different guarantees and trade-offs from those Rust makes by default with regular references.
+// The Box<T> type has a known size and points to data allocated on the heap.
+// The Rc<T> type keeps track of the number of references to data on the heap so that data can have multiple owners.
+// The RefCell<T> type with its interior mutability gives us a type that we can use when we need an immutable type but need to change an inner value of that type; it also enforces the borrowing rules at runtime instead of at compile time.
+
+// Also discussed were the Deref and Drop traits, which enable a lot of the functionality of smart pointers.
+//  We explored reference cycles that can cause memory leaks and how to prevent them using Weak<T>.
+
+// If this chapter has piqued your interest and you want to implement your own smart pointers, check out “The Rustonomicon” for more useful information.
+
+// Next, we’ll talk about concurrency in Rust.
+//  You’ll even learn about a few new smart pointers.
+
+// Question 1
+// Determine whether the program will pass the compiler.
+//  If it passes, write the expected output of the program if it were executed.
+
+// use std::rc::Rc;
+// fn main() {
+//     let r1 = Rc::new(0);
+//     let r4 = {
+//         let r2 = Rc::clone(&r1);
+//         Rc::downgrade(&r2)
+//     };
+//     let r5 = Rc::clone(&r1);
+//     let r6 = r4.upgrade();
+//     println!("{} {}", Rc::strong_count(&r1), Rc::weak_count(&r1));
+// }
+
+// This program does compile.
+
+// The output of this program will be:
+
+// 3 1
+
+// The three strong refs are r1, r5, and r6. The one weak ref is r4. r2 is dropped at the end of its scope.
