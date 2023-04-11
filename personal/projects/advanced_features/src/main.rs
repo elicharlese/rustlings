@@ -1303,98 +1303,116 @@
 //     gen.into()
 // }
 
-We get an Ident struct instance containing the name (identifier) of the annotated type using ast.ident.
- The struct in Listing 19-32 shows that when we run the impl_hello_macro function on the code in Listing 19-30, the ident we get will have the ident field with a value of "Pancakes".
-  Thus, the name variable in Listing 19-33 will contain an Ident struct instance that, when printed, will be the string "Pancakes", the name of the struct in Listing 19-30.
+// We get an Ident struct instance containing the name (identifier) of the annotated type using ast.ident.
+//  The struct in Listing 19-32 shows that when we run the impl_hello_macro function on the code in Listing 19-30, the ident we get will have the ident field with a value of "Pancakes".
+//   Thus, the name variable in Listing 19-33 will contain an Ident struct instance that, when printed, will be the string "Pancakes", the name of the struct in Listing 19-30.
 
-The quote! macro lets us define the Rust code that we want to return.
- The compiler expects something different to the direct result of the quote! macro’s execution, so we need to convert it to a TokenStream.
-  We do this by calling the into method, which consumes this intermediate representation and returns a value of the required TokenStream type.
+// The quote! macro lets us define the Rust code that we want to return.
+// The compiler expects something different to the direct result of the quote! macro’s execution, so we need to convert it to a TokenStream.
+// We do this by calling the into method, which consumes this intermediate representation and returns a value of the required TokenStream type.
 
-The quote! macro also provides some very cool templating mechanics: we can enter #name, and quote! will replace it with the value in the variable name.
- You can even do some repetition similar to the way regular macros work. Check out the quote crate’s docs for a thorough introduction.
+// The quote! macro also provides some very cool templating mechanics: we can enter #name, and quote! will replace it with the value in the variable name.
+// You can even do some repetition similar to the way regular macros work. Check out the quote crate’s docs for a thorough introduction.
 
-We want our procedural macro to generate an implementation of our HelloMacro trait for the type the user annotated, which we can get by using #name.
- The trait implementation has the one function hello_macro, whose body contains the functionality we want to provide: printing Hello, Macro! My name is and then the name of the annotated type.
+// We want our procedural macro to generate an implementation of our HelloMacro trait for the type the user annotated, which we can get by using #name.
+// The trait implementation has the one function hello_macro, whose body contains the functionality we want to provide: printing Hello, Macro! My name is and then the name of the annotated type.
 
-The stringify! macro used here is built into Rust. It takes a Rust expression, such as 1 + 2, and at compile time turns the expression into a string literal, such as "1 + 2".
- This is different than format! or println!, macros which evaluate the expression and then turn the result into a String.
-  There is a possibility that the #name input might be an expression to print literally, so we use stringify!.
-   Using stringify! also saves an allocation by converting #name to a string literal at compile time.
+// The stringify! macro used here is built into Rust. It takes a Rust expression, such as 1 + 2, and at compile time turns the expression into a string literal, such as "1 + 2".
+// This is different than format! or println!, macros which evaluate the expression and then turn the result into a String.
+// There is a possibility that the #name input might be an expression to print literally, so we use stringify!.
+// Using stringify! also saves an allocation by converting #name to a string literal at compile time.
 
-At this point, cargo build should complete successfully in both hello_macro and hello_macro_derive. Let’s hook up these crates to the code in Listing 19-30 to see the procedural macro in action!
- Create a new binary project in your projects directory using cargo new pancakes. We need to add hello_macro and hello_macro_derive as dependencies in the pancakes crate’s Cargo.toml. If you’re publishing your versions of hello_macro and hello_macro_derive to crates.io, they would be regular dependencies; if not, you can specify them as path dependencies as follows:
+// At this point, cargo build should complete successfully in both hello_macro and hello_macro_derive.
+// Let’s hook up these crates to the code in Listing 19-30 to see the procedural macro in action!
+// Create a new binary project in your projects directory using cargo new pancakes.
+// We need to add hello_macro and hello_macro_derive as dependencies in the pancakes crate’s Cargo.toml.
+// If you’re publishing your versions of hello_macro and hello_macro_derive to crates.io, they would be regular dependencies; if not, you can specify them as path dependencies as follows:
 
-hello_macro = { path = "../hello_macro" }
-hello_macro_derive = { path = "../hello_macro/hello_macro_derive" }
+// hello_macro = { path = "../hello_macro" }
+// hello_macro_derive = { path = "../hello_macro/hello_macro_derive" }
 
-Put the code in Listing 19-30 into src/main.rs, and run cargo run: it should print Hello, Macro! My name is Pancakes! The implementation of the HelloMacro trait from the procedural macro was included without the pancakes crate needing to implement it; the #[derive(HelloMacro)] added the trait implementation.
+// Put the code in Listing 19-30 into src/main.rs, and run cargo run: it should print Hello, Macro!
+// My name is Pancakes! The implementation of the HelloMacro trait from the procedural macro was included without the pancakes crate needing to implement it; the #[derive(HelloMacro)] added the trait implementation.
 
-Next, let’s explore how the other kinds of procedural macros differ from custom derive macros.
+// Next, let’s explore how the other kinds of procedural macros differ from custom derive macros.
 
-Attribute-like macros
-Attribute-like macros are similar to custom derive macros, but instead of generating code for the derive attribute, they allow you to create new attributes. They’re also more flexible: derive only works for structs and enums; attributes can be applied to other items as well, such as functions. Here’s an example of using an attribute-like macro: say you have an attribute named route that annotates functions when using a web application framework:
+// Attribute-like macros
+// Attribute-like macros are similar to custom derive macros, but instead of generating code for the derive attribute, they allow you to create new attributes.
+//  They’re also more flexible: derive only works for structs and enums; attributes can be applied to other items as well, such as functions.
+// Here’s an example of using an attribute-like macro: say you have an attribute named route that annotates functions when using a web application framework:
 
-#[route(GET, "/")]
-fn index() {
+// #[route(GET, "/")]
+// fn index() {
 
-This #[route] attribute would be defined by the framework as a procedural macro. The signature of the macro definition function would look like this:
+// This #[route] attribute would be defined by the framework as a procedural macro.
+//  The signature of the macro definition function would look like this:
 
-#[proc_macro_attribute]
-pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
+// #[proc_macro_attribute]
+// pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
 
-Here, we have two parameters of type TokenStream. The first is for the contents of the attribute: the GET, "/" part. The second is the body of the item the attribute is attached to: in this case, fn index() {} and the rest of the function’s body.
+// Here, we have two parameters of type TokenStream.
+// The first is for the contents of the attribute: the GET, "/" part.
+// The second is the body of the item the attribute is attached to: in this case, fn index() {} and the rest of the function’s body.
 
-Other than that, attribute-like macros work the same way as custom derive macros: you create a crate with the proc-macro crate type and implement a function that generates the code you want!
+// Other than that, attribute-like macros work the same way as custom derive macros: you create a crate with the proc-macro crate type and implement a function that generates the code you want!
 
-Function-like macros
-Function-like macros define macros that look like function calls. Similarly to macro_rules! macros, they’re more flexible than functions; for example, they can take an unknown number of arguments. However, macro_rules! macros can be defined only using the match-like syntax we discussed in the section “Declarative Macros with macro_rules! for General Metaprogramming” earlier. Function-like macros take a TokenStream parameter and their definition manipulates that TokenStream using Rust code as the other two types of procedural macros do. An example of a function-like macro is an sql! macro that might be called like so:
+// Function-like macros
+// Function-like macros define macros that look like function calls.
+// Similarly to macro_rules! macros, they’re more flexible than functions; for example, they can take an unknown number of arguments.
+// However, macro_rules! macros can be defined only using the match-like syntax we discussed in the section “Declarative Macros with macro_rules! for General Metaprogramming” earlier. Function-like macros take a TokenStream parameter and their definition manipulates that TokenStream using Rust code as the other two types of procedural macros do.
+// An example of a function-like macro is an sql! macro that might be called like so:
 
-let sql = sql!(SELECT * FROM posts WHERE id=1);
+// let sql = sql!(SELECT * FROM posts WHERE id=1);
 
-This macro would parse the SQL statement inside it and check that it’s syntactically correct, which is much more complex processing than a macro_rules! macro can do. The sql! macro would be defined like this:
+// This macro would parse the SQL statement inside it and check that it’s syntactically correct, which is much more complex processing than a macro_rules! macro can do.
+//  The sql! macro would be defined like this:
 
-#[proc_macro]
-pub fn sql(input: TokenStream) -> TokenStream {
+// #[proc_macro]
+// pub fn sql(input: TokenStream) -> TokenStream {
 
-This definition is similar to the custom derive macro’s signature: we receive the tokens that are inside the parentheses and return the code we wanted to generate.
+// This definition is similar to the custom derive macro’s signature: we receive the tokens that are inside the parentheses and return the code we wanted to generate.
 
-Question 1
-Determine whether the program will pass the compiler. If it passes, write the expected output of the program if it were executed.
+// Question 1
+// Determine whether the program will pass the compiler. If it passes, write the expected output of the program if it were executed.
 
-macro_rules! manylet {
-    ( $( $i:ident ),* = $e:expr ) => {
-        $(
-            let mut $i = $e;
-        )*
-    }
-}
-fn main() {
-    let mut s = String::from("A");
-    manylet!(x, y = s);
-    x.push_str("B");
-    println!("{x}{y}");
-}
+// macro_rules! manylet {
+//     ( $( $i:ident ),* = $e:expr ) => {
+//         $(
+//             let mut $i = $e;
+//         )*
+//     }
+// }
+// fn main() {
+//     let mut s = String::from("A");
+//     manylet!(x, y = s);
+//     x.push_str("B");
+//     println!("{x}{y}");
+// }
 
-This program does not compile.
-The manylet macro syntactically duplicates the expression e as a binding to each variable on the left-hand side of the equals. However, because s is an owned string, then the first binding to x moves s, and the second binding to y is invalid.
+// This program does not compile.
+// The manylet macro syntactically duplicates the expression e as a binding to each variable on the left-hand side of the equals.
+// However, because s is an owned string, then the first binding to x moves s, and the second binding to y is invalid.
 
-Question 2
-Which of the following are valid reasons for implementing a macro as a procedural macro instead of a declarative macro?
+// Question 2
+// Which of the following are valid reasons for implementing a macro as a procedural macro instead of a declarative macro?
 
-You want to integrate with Rust's derive system
-Your macro requires nontrivial analysis of the macro user's syntax
+// You want to integrate with Rust's derive system
+// Your macro requires nontrivial analysis of the macro user's syntax
 
-Procedural macros are the only way to create a custom derive. Procedural macros are also useful when you need code to analyze the macro user's syntax --- declarative macros only permit shuffling around the input, not e.g. computing its size.
-Declarative macros can generate variable-length sequences of code, and can wrap/produce items and not just expressions.
+// Procedural macros are the only way to create a custom derive.
+// Procedural macros are also useful when you need code to analyze the macro user's syntax --- declarative macros only permit shuffling around the input, not e.g. computing its size.
+// Declarative macros can generate variable-length sequences of code, and can wrap/produce items and not just expressions.
 
-Question 3
-Which of the following best describes the input to a procedural macro?
+// Question 3
+// Which of the following best describes the input to a procedural macro?
 
-The input is a sequence of tokens
-Procedural macros take as input (and produce as output) token streams. You can use crates like syn to convert tokens to syntax trees.
+// The input is a sequence of tokens
+// Procedural macros take as input (and produce as output) token streams.
+// You can use crates like syn to convert tokens to syntax trees.
 
-Summary
-Whew! Now you have some Rust features in your toolbox that you likely won’t use often, but you’ll know they’re available in very particular circumstances. We’ve introduced several complex topics so that when you encounter them in error message suggestions or in other peoples’ code, you’ll be able to recognize these concepts and syntax. Use this chapter as a reference to guide you to solutions.
+// Summary
+// Whew! Now you have some Rust features in your toolbox that you likely won’t use often, but you’ll know they’re available in very particular circumstances.
+// We’ve introduced several complex topics so that when you encounter them in error message suggestions or in other peoples’ code, you’ll be able to recognize these concepts and syntax.
+// Use this chapter as a reference to guide you to solutions.
 
-Next, we’ll put everything we’ve discussed throughout the book into practice and do one more project!
+// Next, we’ll put everything we’ve discussed throughout the book into practice and do one more project!
